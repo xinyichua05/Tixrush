@@ -34,8 +34,11 @@ public class TestcontainersConfiguration {
 
     /** Started on first use (when Spring first creates the bean below), then reused. */
     static final class Containers {
+        // Spring keeps each different test setup ("context") alive for reuse, and each one holds its own
+        // pool of 20 DB connections. Postgres allows only 100 by default, so allow more.
         static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:18-alpine")
-                .withDatabaseName("tixrush").withUsername("tixrush").withPassword("tixrush");
+                .withDatabaseName("tixrush").withUsername("tixrush").withPassword("tixrush")
+                .withCommand("postgres", "-c", "max_connections=400");
         static final GenericContainer<?> REDIS = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
         static final RabbitMQContainer RABBIT = new RabbitMQContainer("rabbitmq:4-management-alpine");
 
