@@ -1,5 +1,8 @@
 package com.tixrush.auth;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @Transactional on a test = everything it writes is rolled back afterwards, so the
  * database stays clean between runs.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

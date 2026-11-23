@@ -17,7 +17,7 @@ spring:
     # Connection pool: at most 20 open DB connections shared by all requests.
     # Under a rush, extra requests WAIT for a free connection (up to 30s, then error).
     hikari:
-      maximum-pool-size: 20
+      maximum-pool-size: ${DB_POOL_SIZE:20}  # small free servers/databases: set DB_POOL_SIZE=8
 
   # Redis (Upstash). REDIS_URL is a Windows user env var, so the password never goes in git.
   # "rediss://" (two s) = encrypted TLS connection.
@@ -93,6 +93,22 @@ tixrush:
     # Where Stripe sends the buyer back to after paying.
     frontend-url: ${FRONTEND_URL:http://localhost:5173}
     currency: myr
+  # Object storage for event posters and seating plans (S3-compatible: we use Supabase Storage).
+  # Empty bucket = off: pictures stay in Postgres (local development). Online, set the STORAGE_* env vars.
+  storage:
+    bucket: ${STORAGE_BUCKET:}
+    endpoint: ${STORAGE_ENDPOINT:}         # https://<project>.supabase.co/storage/v1/s3
+    region: ${STORAGE_REGION:}             # the Supabase project's region, e.g. ap-southeast-1
+    access-key: ${STORAGE_ACCESS_KEY:}
+    secret-key: ${STORAGE_SECRET_KEY:}
+    public-url: ${STORAGE_PUBLIC_URL:}     # https://<project>.supabase.co/storage/v1/object/public/<bucket>
+
+server:
+  # Hosts like Render choose the port and pass it in PORT. Locally it's 8080.
+  port: ${PORT:8080}
+  # Online, a proxy in front of us handles HTTPS and passes "X-Forwarded-Proto: https" along.
+  # This makes Spring trust those headers, so redirects and links use https:// too.
+  forward-headers-strategy: framework
 
 logging:
   level:

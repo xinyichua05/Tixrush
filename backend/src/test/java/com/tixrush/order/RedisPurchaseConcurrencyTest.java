@@ -1,5 +1,9 @@
 package com.tixrush.order;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.RequiresServices;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.event.Event;
 import com.tixrush.event.EventRepository;
 import com.tixrush.event.SoldOutException;
@@ -7,7 +11,6 @@ import com.tixrush.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -23,10 +26,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Same rush as PurchaseConcurrencyTest, but for version 4 (Redis counter).
- * Only runs when REDIS_URL is set. Without Redis it is skipped, not failed.
+ * Needs Redis: Docker (CI) or REDIS_URL (laptop). Without either it is skipped, not failed.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
+@RequiresServices
 class RedisPurchaseConcurrencyTest {
 
     private static final int TICKETS = 50;

@@ -1,5 +1,8 @@
 package com.tixrush.order;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.common.ConflictException;
 import com.tixrush.common.NotFoundException;
 import com.tixrush.event.Event;
@@ -21,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Paying for a held order: only once, only your own, only in time. Database only (rolled back). */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @Transactional
 class OrderPaymentTest {

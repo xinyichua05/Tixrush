@@ -1,5 +1,8 @@
 package com.tixrush.event;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.jayway.jsonpath.JsonPath;
 import com.tixrush.order.OrderRepository;
 import com.tixrush.user.UserRepository;
@@ -31,6 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Creating and editing events that sell ticket types: zones copied from a saved venue, or simple
  * hand-typed types (an exhibition). Real Postgres; @Transactional rolls everything back afterwards.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

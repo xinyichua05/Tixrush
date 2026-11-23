@@ -1,0 +1,52 @@
+# Render "Blueprint": describes the TixRush web service, so Render can create it from this repo.
+# Render dashboard -> New -> Blueprint -> pick this repo. Every secret is marked "sync: false": Render
+# asks you to type the value in its dashboard, so it never lives in git.
+services:
+  - type: web
+    name: tixrush
+    runtime: docker            # built from the Dockerfile at the repo root (website + API in one image)
+    plan: free                 # 512 MB, sleeps after 15 min without visitors (~1 min to wake up)
+    region: singapore
+    healthCheckPath: /actuator/health
+    autoDeployTrigger: checksPass   # deploy a new push only after GitHub Actions CI is green
+    envVars:
+      # --- not secret ---
+      - key: DB_POOL_SIZE
+        value: "8"             # small server + Neon's free plan: few DB connections
+      - key: DEV_TOOLS
+        value: "false"
+      # --- secrets: typed in the Render dashboard ---
+      - key: DB_URL              # Neon, DIRECT connection: jdbc:postgresql://<host>/<db>?sslmode=require
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: REDIS_URL           # a NEW Upstash database (not the one your laptop uses)
+        sync: false
+      - key: RABBITMQ_URL        # a NEW CloudAMQP instance (not the one your laptop uses)
+        sync: false
+      - key: JWT_SECRET          # 64 random characters
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: FRONTEND_URL        # https://<your-service>.onrender.com
+        sync: false
+      - key: STRIPE_SECRET_KEY   # sk_test_...
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_ENDPOINT
+        sync: false
+      - key: STORAGE_REGION
+        sync: false
+      - key: STORAGE_ACCESS_KEY
+        sync: false
+      - key: STORAGE_SECRET_KEY
+        sync: false
+      - key: STORAGE_PUBLIC_URL
+        sync: false

@@ -1,5 +1,9 @@
 package com.tixrush.seat;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.RequiresServices;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.common.BadRequestException;
 import com.tixrush.common.ConflictException;
 import com.tixrush.event.EventRepository;
@@ -22,7 +26,6 @@ import com.tixrush.venue.VenueService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -48,9 +51,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Numbered seats end to end, against REAL Postgres + Redis + RabbitMQ, with a 5-second payment hold:
  * pick exact seats, the race for the same seat, best available, and seats coming back on expiry.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = "tixrush.orders.payment-hold=5s")
-@EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
-@EnabledIfEnvironmentVariable(named = "RABBITMQ_URL", matches = "amqps?://.+")
+@RequiresServices(rabbit = true)
 class SeatPurchaseFlowTest {
 
     @Autowired VenueService venueService;

@@ -1,0 +1,63 @@
+# The whole TixRush system on any computer with Docker:
+#   docker compose up --build        ->  http://localhost:8080  (website + API)
+#   docker compose down              (add -v to also delete the database)
+#
+# Everything here is LOCAL and uses dev passwords. Production uses real secrets set on the host.
+# Optional: put STRIPE_SECRET_KEY=sk_test_... in a .env file next to this one for real test payments.
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/tixrush
+      DB_USERNAME: tixrush
+      DB_PASSWORD: tixrush
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      FRONTEND_URL: http://localhost:8080
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      DEV_TOOLS: ${DEV_TOOLS:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: tixrush
+      POSTGRES_USER: tixrush
+      POSTGRES_PASSWORD: tixrush
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tixrush -d tixrush"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "15672:15672"   # RabbitMQ's own dashboard: http://localhost:15672 (guest / guest)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  pgdata:

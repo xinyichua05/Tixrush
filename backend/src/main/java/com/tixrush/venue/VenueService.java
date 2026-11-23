@@ -3,6 +3,7 @@ package com.tixrush.venue;
 import com.tixrush.common.BadRequestException;
 import com.tixrush.common.ConflictException;
 import com.tixrush.common.ImageFiles;
+import com.tixrush.common.Pictures;
 import com.tixrush.common.NotFoundException;
 import com.tixrush.event.EventImageStore.StoredImage;
 import com.tixrush.event.EventRepository;
@@ -25,13 +26,15 @@ public class VenueService {
     private final VenueZoneRepository zoneRepository;
     private final VenueMapStore mapStore;
     private final EventRepository eventRepository;
+    private final Pictures pictures;
 
     public VenueService(VenueRepository venueRepository, VenueZoneRepository zoneRepository,
-                        VenueMapStore mapStore, EventRepository eventRepository) {
+                        VenueMapStore mapStore, EventRepository eventRepository, Pictures pictures) {
         this.venueRepository = venueRepository;
         this.zoneRepository = zoneRepository;
         this.mapStore = mapStore;
         this.eventRepository = eventRepository;
+        this.pictures = pictures;
     }
 
     @Transactional(readOnly = true)
@@ -42,7 +45,8 @@ public class VenueService {
                 .findByVenueIdInOrderBySortOrderAsc(venues.stream().map(Venue::getId).toList()).stream()
                 .collect(Collectors.groupingBy(VenueZone::getVenueId));
         return venues.stream()
-                .map(v -> VenueResponse.from(v, zones.getOrDefault(v.getId(), List.of()),
+                .map(v -> VenueResponse.from(v, pictures.venueMapUrl(v.getId(), v.getMapKey()),
+                        zones.getOrDefault(v.getId(), List.of()),
                         eventRepository.countByVenueId(v.getId())))
                 .toList();
     }
@@ -92,23 +96,40 @@ public class VenueService {
                     + ". Change or delete those events first.");
         }
         venueRepository.delete(venue); // zones and map go too (ON DELETE CASCADE)
+        if (venue.getMapKey() != null) {
+            pictures.deleteAfterCommit(Pictures.venueMapObject(id, venue.getMapKey())); // and its file in storage
+        }
     }
 
     // ---- Seating-plan picture (same rules as event pictures) ----
 
     @Transactional
     public VenueResponse uploadMap(Long id, MultipartFile file) {
-        findOrThrow(id);
+        String oldKey = findOrThrow(id).getMapKey();
         ImageFiles.Checked image = ImageFiles.check(file);
-        mapStore.save(id, image.contentType(), image.data());
-        venueRepository.setMapKey(id, UUID.randomUUID().toString()); // new key = new URL
+        String newKey = UUID.randomUUID().toString(); // new key = new URL
+        if (pictures.inBucket()) {
+            pictures.upload(Pictures.venueMapObject(id, newKey), image);
+            if (oldKey != null) {
+                pictures.deleteAfterCommit(Pictures.venueMapObject(id, oldKey));
+            }
+        } else {
+            mapStore.save(id, image.contentType(), image.data());
+        }
+        venueRepository.setMapKey(id, newKey);
         return toResponse(findOrThrow(id)); // re-read: setMapKey ran as plain SQL
     }
 
     @Transactional
     public void removeMap(Long id) {
-        findOrThrow(id);
-        mapStore.delete(id);
+        String oldKey = findOrThrow(id).getMapKey();
+        if (pictures.inBucket()) {
+            if (oldKey != null) {
+                pictures.deleteAfterCommit(Pictures.venueMapObject(id, oldKey));
+            }
+        } else {
+            mapStore.delete(id);
+        }
         venueRepository.setMapKey(id, null);
     }
 
@@ -159,7 +180,8 @@ public class VenueService {
     }
 
     private VenueResponse toResponse(Venue venue) {
-        return VenueResponse.from(venue, zoneRepository.findByVenueIdOrderBySortOrderAsc(venue.getId()),
+        return VenueResponse.from(venue, pictures.venueMapUrl(venue.getId(), venue.getMapKey()),
+                zoneRepository.findByVenueIdOrderBySortOrderAsc(venue.getId()),
                 eventRepository.countByVenueId(venue.getId()));
     }
 

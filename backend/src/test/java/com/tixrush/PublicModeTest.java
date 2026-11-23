@@ -1,5 +1,7 @@
 package com.tixrush;
 
+import org.springframework.context.annotation.Import;
+
 import com.jayway.jsonpath.JsonPath;
 import com.tixrush.event.Event;
 import com.tixrush.event.EventRepository;
@@ -10,7 +12,6 @@ import com.tixrush.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -32,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * The real site (dev tools OFF, the default): no developer pages, no choosing the buy version,
  * and Practice rush events/tickets never show up in the real shop.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 class PublicModeTest {
@@ -65,7 +67,8 @@ class PublicModeTest {
     @Test
     void developerPagesAndEndpoints_areHidden() throws Exception {
         String token = adminToken();
-        mockMvc.perform(get("/index.html")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visualizer/")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visualizer/app.js")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/admin/rush").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
         mockMvc.perform(get("/api/admin/events/" + realEventId + "/stats").header("Authorization", "Bearer " + token))
@@ -91,8 +94,7 @@ class PublicModeTest {
     }
 
     @Test
-    @EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
-    @EnabledIfEnvironmentVariable(named = "RABBITMQ_URL", matches = "amqps?://.+")
+    @RequiresServices(rabbit = true)
     void askingForTheBrokenVersion_stillUsesTheSafeOne() throws Exception {
         mockMvc.perform(post("/api/events/" + realEventId + "/purchases?strategy=naive")
                         .header("Authorization", "Bearer " + adminToken()))

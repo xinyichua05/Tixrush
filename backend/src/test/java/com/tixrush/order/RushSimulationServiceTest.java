@@ -1,5 +1,8 @@
 package com.tixrush.order;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.event.Event;
 import com.tixrush.event.EventRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -14,6 +17,7 @@ import java.time.temporal.ChronoUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** The server-side rush used by the visualizer page: a pessimistic rush must sell exactly every seat. */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = "tixrush.dev-tools.enabled=true")
 class RushSimulationServiceTest {
 

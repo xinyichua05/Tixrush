@@ -1,5 +1,8 @@
 package com.tixrush.event;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Event pictures, end to end against the real Postgres: upload (admin only), serve (everyone),
  * replace, remove, and the safety checks. @Transactional: everything is rolled back afterwards.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

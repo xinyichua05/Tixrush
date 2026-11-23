@@ -1,8 +1,11 @@
 package com.tixrush.waitingroom;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.RequiresServices;
+import com.tixrush.TestcontainersConfiguration;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -14,8 +17,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** The waiting room against REAL Redis: line order, admitting from the front, one-time passes. */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
+@RequiresServices
 class WaitingRoomServiceTest {
 
     private static final Long EVENT = 990_000_001L; // no DB row needed: the waiting room only uses Redis

@@ -1,7 +1,5 @@
 package com.tixrush.event;
 
-import com.tixrush.venue.Venue;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Comparator;
@@ -41,7 +39,7 @@ public record EventResponse(
         }
     }
 
-    static EventResponse from(Event event, List<TicketType> types, Venue venue) {
+    static EventResponse from(Event event, List<TicketType> types, String imageUrl, String mapUrl) {
         return new EventResponse(
                 event.getId(),
                 event.getName(),
@@ -50,10 +48,9 @@ public record EventResponse(
                 event.getSaleStartsAt(),
                 event.getTotalTickets(),
                 event.getAvailableTickets(),
-                event.getImageKey() == null ? null
-                        : "/api/events/" + event.getId() + "/image?v=" + event.getImageKey(),
+                imageUrl,
                 event.getVenueId(),
-                venue == null ? null : venue.getMapUrl(),
+                mapUrl,
                 types.stream().map(TicketTypeView::from).toList(),
                 types.stream().map(TicketType::getPrice).min(Comparator.naturalOrder()).orElse(null)
         );

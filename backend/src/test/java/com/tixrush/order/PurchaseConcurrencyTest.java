@@ -1,5 +1,8 @@
 package com.tixrush.order;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.common.TooBusyException;
 import com.tixrush.event.Event;
 import com.tixrush.event.EventRepository;
@@ -28,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * No @Transactional here: the purchases run on other threads, and each must really commit,
  * exactly like real concurrent requests. So we clean up by hand in @AfterEach.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 class PurchaseConcurrencyTest {
 

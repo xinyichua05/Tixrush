@@ -1,5 +1,6 @@
 package com.tixrush.event;
 
+import com.tixrush.common.Pictures;
 import com.tixrush.venue.Venue;
 import com.tixrush.venue.VenueRepository;
 import org.springframework.stereotype.Component;
@@ -21,10 +22,12 @@ public class EventViews {
 
     private final TicketTypeRepository ticketTypeRepository;
     private final VenueRepository venueRepository;
+    private final Pictures pictures;
 
-    public EventViews(TicketTypeRepository ticketTypeRepository, VenueRepository venueRepository) {
+    public EventViews(TicketTypeRepository ticketTypeRepository, VenueRepository venueRepository, Pictures pictures) {
         this.ticketTypeRepository = ticketTypeRepository;
         this.venueRepository = venueRepository;
+        this.pictures = pictures;
     }
 
     public EventResponse of(Event event) {
@@ -42,8 +45,12 @@ public class EventViews {
         Map<Long, Venue> venues = venueIds.isEmpty() ? Map.of()
                 : venueRepository.findAllById(venueIds).stream().collect(Collectors.toMap(Venue::getId, Function.identity()));
         return events.stream()
-                .map(e -> EventResponse.from(e, types.getOrDefault(e.getId(), List.of()),
-                        e.getVenueId() == null ? null : venues.get(e.getVenueId())))
+                .map(e -> {
+                    Venue venue = e.getVenueId() == null ? null : venues.get(e.getVenueId());
+                    return EventResponse.from(e, types.getOrDefault(e.getId(), List.of()),
+                            pictures.eventUrl(e.getId(), e.getImageKey()),
+                            venue == null ? null : pictures.venueMapUrl(venue.getId(), venue.getMapKey()));
+                })
                 .toList();
     }
 }

@@ -21,6 +21,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
@@ -53,8 +55,11 @@ public class SecurityConfig {
                         // Stripe calls this; it's protected by Stripe's signature (checked inside), not by a login.
                         .requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
                         // The developer visualizer page: public with dev tools on, hidden from everyone otherwise.
-                        .requestMatchers(HttpMethod.GET, "/", "/index.html", "/visualizer/**", "/favicon.ico")
+                        .requestMatchers(HttpMethod.GET, "/visualizer", "/visualizer/**")
                         .access((authentication, context) -> new AuthorizationDecision(devTools))
+                        // The React website (its pages, index.html, /assets/...): everyone. Its pages call
+                        // the API, and the API rules below decide what each person may do.
+                        .requestMatchers(SecurityConfig::isWebsiteRequest).permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/events", "/api/events/**").permitAll()
                         // Venues + their seating plans: everyone can look, only admins change them.
                         .requestMatchers(HttpMethod.GET, "/api/venues", "/api/venues/**").permitAll()
@@ -70,6 +75,14 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
         return http.build();
+    }
+
+    /** A GET for the website (anything that isn't the API or the actuator). See SpaController. */
+    private static boolean isWebsiteRequest(HttpServletRequest request) {
+        String path = request.getRequestURI().substring(request.getContextPath().length());
+        return HttpMethod.GET.matches(request.getMethod())
+                && !path.equals("/api") && !path.startsWith("/api/")
+                && !path.equals("/actuator") && !path.startsWith("/actuator/");
     }
 
     /** Maps the token claim  "role": "ADMIN"  to the authority ROLE_ADMIN that hasRole() checks. */

@@ -3,6 +3,7 @@ package com.tixrush.event;
 import com.tixrush.common.BadRequestException;
 import com.tixrush.common.ConflictException;
 import com.tixrush.common.NotFoundException;
+import com.tixrush.common.Pictures;
 import com.tixrush.config.RedisConfig;
 import com.tixrush.order.OrderRepository;
 import com.tixrush.order.RedisStockService;
@@ -50,11 +51,13 @@ public class EventService {
     private final TicketStockService ticketStock;
     private final SeatRepository seatRepository;
     private final EventViews views;
+    private final Pictures pictures;
 
     public EventService(EventRepository eventRepository, TicketTypeRepository ticketTypeRepository,
                         VenueRepository venueRepository, VenueZoneRepository zoneRepository,
                         OrderRepository orderRepository, RedisStockService redisStock,
-                        TicketStockService ticketStock, SeatRepository seatRepository, EventViews views) {
+                        TicketStockService ticketStock, SeatRepository seatRepository, EventViews views,
+                        Pictures pictures) {
         this.eventRepository = eventRepository;
         this.ticketTypeRepository = ticketTypeRepository;
         this.venueRepository = venueRepository;
@@ -64,6 +67,7 @@ public class EventService {
         this.ticketStock = ticketStock;
         this.seatRepository = seatRepository;
         this.views = views;
+        this.pictures = pictures;
     }
 
     // readOnly = true is a hint to Hibernate/DB: no dirty-checking, no writes expected.
@@ -141,6 +145,9 @@ public class EventService {
         Event event = findOrThrow(id);
         List<Long> typeIds = ticketTypeRepository.findByEventIdOrderBySortOrderAsc(id).stream().map(TicketType::getId).toList();
         eventRepository.delete(event); // ticket types + orders go too (ON DELETE CASCADE)
+        if (event.getImageKey() != null) {
+            pictures.deleteAfterCommit(Pictures.eventObject(id, event.getImageKey())); // and its poster in storage
+        }
         clearStockAfterCommit(id, typeIds); // and its Redis counters, so nothing stale is left behind
     }
 

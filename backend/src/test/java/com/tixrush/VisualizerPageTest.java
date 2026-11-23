@@ -1,5 +1,7 @@
 package com.tixrush;
 
+import org.springframework.context.annotation.Import;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,9 +11,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** The visualizer's static files are public, but the rush API behind them stays admin-only. */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = "tixrush.dev-tools.enabled=true")
 @AutoConfigureMockMvc
 class VisualizerPageTest {
@@ -21,11 +25,11 @@ class VisualizerPageTest {
 
     @Test
     void pageAndAssets_needNoToken() throws Exception {
-        mockMvc.perform(get("/index.html"))
+        mockMvc.perform(get("/visualizer/index.html"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("Rush Visualizer")));
         mockMvc.perform(get("/visualizer/app.js")).andExpect(status().isOk());
-        mockMvc.perform(get("/")).andExpect(status().isOk());
+        mockMvc.perform(get("/visualizer/")).andExpect(forwardedUrl("/visualizer/index.html"));
     }
 
     @Test

@@ -1,5 +1,8 @@
 package com.tixrush.order;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.event.Event;
 import com.tixrush.event.EventRepository;
 import com.tixrush.user.UserRepository;
@@ -20,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * started must be dropped, otherwise it would take a seat in the new run. Real events are unaffected.
  * (@Transactional: everything is rolled back after each test.)
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @Transactional
 class PracticeOrderGuardTest {

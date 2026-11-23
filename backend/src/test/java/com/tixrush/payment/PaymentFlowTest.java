@@ -1,5 +1,9 @@
 package com.tixrush.payment;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.RequiresServices;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.common.ConflictException;
 import com.tixrush.common.NotFoundException;
 import com.tixrush.event.CreateEventRequest;
@@ -15,7 +19,6 @@ import com.tixrush.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -48,9 +51,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * finding out it was paid, refunding money that arrives too late, closing the page on cancel,
  * and the signed webhook. (Needs Redis for the cancel step, like the other order tests.)
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = "tixrush.payments.webhook-secret=" + PaymentFlowTest.WEBHOOK_SECRET)
 @AutoConfigureMockMvc
-@EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
+@RequiresServices
 class PaymentFlowTest {
 
     static final String WEBHOOK_SECRET = "whsec_test_secret";

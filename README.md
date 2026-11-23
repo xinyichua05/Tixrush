@@ -1,5 +1,7 @@
 # TixRush
 
+[![CI](https://github.com/xinyichua05/Tixrush/actions/workflows/ci.yml/badge.svg)](https://github.com/xinyichua05/Tixrush/actions/workflows/ci.yml)
+
 **A concert-ticket flash-sale system: thousands of fans, a few hundred seats, one second.**
 
 TixRush is a full-stack ticket shop built to survive the moment a big concert goes on sale. It never oversells. A double-click never creates two orders. Unpaid tickets go back on sale after 10 minutes. Payment runs through Stripe (test mode).
@@ -33,7 +35,7 @@ TixRush is a full-stack ticket shop built to survive the moment a big concert go
 **For admins**
 - **Create, edit and delete events**, with a poster image and ticket types.
 - **Venues** with zones and seating plans (rows × seats), reused across events.
-- **The Rush Visualizer** (http://localhost:8080/): fire thousands of simulated buyers at each of the 5 purchase versions and watch for overselling live.
+- **The Rush Visualizer** (http://localhost:8080/visualizer/, with `DEV_TOOLS=true`): fire thousands of simulated buyers at each of the 5 purchase versions and watch for overselling live.
 
 ## How a purchase survives the rush
 
@@ -81,9 +83,38 @@ Full details are in [docs/benchmarks.md](docs/benchmarks.md).
 | Data | PostgreSQL 18, Redis (Upstash), RabbitMQ (CloudAMQP) |
 | Payments | Stripe Checkout (test mode) via `stripe-java` |
 | Frontend | React 19, TypeScript, Vite, React Router, TanStack Query |
-| Testing | JUnit + Spring Boot Test (80+ tests), Vitest + React Testing Library (90+ tests), k6 load tests |
+| Testing | JUnit + Spring Boot Test + Testcontainers (80+ tests), Vitest + React Testing Library (90+ tests), k6 load tests |
+| Delivery | Docker (one image: website + API), Docker Compose, GitHub Actions CI, Render, Supabase Storage |
 
-## Run it locally (Windows)
+## Run it with Docker (any computer)
+
+```bash
+docker compose up --build
+```
+
+**Open http://localhost:8080.** One command starts the whole system:
+- the app: the React website and the API, from one image
+- PostgreSQL, Redis and RabbitMQ
+
+The admin login is `admin@tixrush.local` / `admin12345`.
+
+**For real test payments,** put `STRIPE_SECRET_KEY=sk_test_...` in a `.env` file next to `docker-compose.yml`.
+
+**To stop it,** run `docker compose down` (add `-v` to also delete the database).
+
+## How it's tested and shipped
+
+- **Every push runs [CI](.github/workflows/ci.yml) on GitHub Actions:**
+  1. **Backend tests** run against throwaway Postgres, Redis and RabbitMQ containers (Testcontainers), so every run starts clean and shares nothing.
+  2. **Frontend** lint, tests and a production build.
+  3. **A smoke test** builds the Docker image, starts everything with Compose, and checks the site, the API, a deep link and that developer tools are hidden.
+- **The live site:**
+  - **Deploy:** Render runs the image and deploys only after CI is green ([render.yaml](render.yaml)).
+  - **Database:** Neon (Postgres). Redis and RabbitMQ use their own production instances.
+  - **Pictures:** event posters and seating plans go to **Supabase Storage** (S3-compatible) and load from its CDN. Locally they stay in Postgres.
+  - **Secrets** are set only in the host's dashboard. The app refuses to start online with the development JWT secret or admin password.
+
+## Run it locally on Windows (without Docker)
 
 ### What you need
 - **Java 21, Node.js 20+ and PostgreSQL.** The start scripts expect portable copies in `%USERPROFILE%\tools`:
@@ -133,7 +164,9 @@ The first time only, run `npm install` in `frontend` before starting.
 ### Tests
 
 ```powershell
-cd backend;  .\mvnw.cmd test             # stop the running backend first: both use the same RabbitMQ queues
+cd backend;  .\mvnw.cmd test             # uses Docker containers if Docker is running; otherwise your
+                                         # REDIS_URL/RABBITMQ_URL (then stop the dev backend first:
+                                         # it would share the RabbitMQ queues with the tests)
 cd frontend; npm test; npm run lint
 ```
 
@@ -149,6 +182,10 @@ cd frontend; npm test; npm run lint
 | `FRONTEND_URL` | `http://localhost:5173` | Where Stripe sends the buyer back |
 | `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | dev values | **Change these before deploying** |
 | `PAYMENT_HOLD` | `10m` | How long an unpaid order holds its tickets (try `1m` to watch them come back) |
+| `STORAGE_BUCKET`, `STORAGE_ENDPOINT`, `STORAGE_REGION`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_PUBLIC_URL` | *(empty: pictures in Postgres)* | S3-compatible object storage for pictures (Supabase Storage online) |
+| `DB_POOL_SIZE` | `20` | Max database connections (8 on the free server) |
+| `PORT` | `8080` | Set by the host online; also switches on the "no development secrets" check |
+| `DEV_TOOLS` | `false` | `true` shows the Rush Visualizer and the benchmark endpoints |
 
 ## API overview
 

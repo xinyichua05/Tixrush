@@ -1,8 +1,11 @@
 package com.tixrush.order;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.RequiresServices;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.common.RateLimitedException;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -13,8 +16,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** 5 attempts per minute are fine, and the 6th is refused. Needs real Redis. */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
-@EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
+@RequiresServices
 class RateLimiterTest {
 
     @Autowired

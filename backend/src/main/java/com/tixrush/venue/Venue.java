@@ -47,9 +47,4 @@ public class Venue {
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getMapKey() { return mapKey; }
-
-    /** Where the browser loads the map. The key in the URL changes with every upload (cache-buster). */
-    public String getMapUrl() {
-        return mapKey == null ? null : "/api/venues/" + id + "/map?v=" + mapKey;
-    }
 }

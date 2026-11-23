@@ -1,0 +1,33 @@
+# Free plans go to sleep when nobody uses them. Supabase pauses a free project after about a week
+# without activity (then pictures stop loading until you press "Restore" in its dashboard), so this
+# visits the site and one picture in storage twice a week.
+#
+# Set these in GitHub: repo -> Settings -> Secrets and variables -> Actions -> Variables
+#   SITE_URL              https://<your-service>.onrender.com
+#   KEEPALIVE_PICTURE_URL the public URL of any picture in your Supabase bucket
+name: Keep alive
+
+on:
+  schedule:
+    - cron: '17 3 * * 1,4'   # Mondays and Thursdays, 03:17 UTC
+  workflow_dispatch:          # also a "Run workflow" button in the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the site (Render) and touch storage (Supabase)
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+          PICTURE_URL: ${{ vars.KEEPALIVE_PICTURE_URL }}
+        run: |
+          if [ -n "$SITE_URL" ]; then
+            curl -fsS --retry 5 --retry-delay 20 --max-time 120 "$SITE_URL/actuator/health" && echo " <- site"
+          else
+            echo "SITE_URL not set yet, skipping the site"
+          fi
+          if [ -n "$PICTURE_URL" ]; then
+            curl -fsS -o /dev/null --max-time 60 "$PICTURE_URL" && echo "picture: OK"
+          else
+            echo "KEEPALIVE_PICTURE_URL not set yet, skipping storage"
+          fi

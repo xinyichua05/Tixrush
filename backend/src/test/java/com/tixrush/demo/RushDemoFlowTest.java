@@ -1,5 +1,9 @@
 package com.tixrush.demo;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.RequiresServices;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.jayway.jsonpath.JsonPath;
 import com.tixrush.event.EventRepository;
 import com.tixrush.event.EventService;
@@ -12,7 +16,6 @@ import com.tixrush.user.UserRepository;
 import com.tixrush.common.ConflictException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -33,10 +36,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Checks the waiting-room gate (403 without a pass), that the run ends on its own,
  * and that it never sells more seats than exist.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
-@EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
-@EnabledIfEnvironmentVariable(named = "RABBITMQ_URL", matches = "amqps?://.+")
+@RequiresServices(rabbit = true)
 class RushDemoFlowTest {
 
     private static final int TICKETS = 10;

@@ -1,5 +1,9 @@
 package com.tixrush.order;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.RequiresServices;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.tixrush.event.Event;
 import com.tixrush.event.EventRepository;
 import com.tixrush.event.SoldOutException;
@@ -7,7 +11,6 @@ import com.tixrush.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -29,9 +32,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * The whole v4 flow against REAL Redis + RabbitMQ + Postgres, with a 5-second payment hold:
  *   rush -> 202s -> workers create PENDING orders -> one is paid -> the rest expire -> tickets come back.
  */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest(properties = "tixrush.orders.payment-hold=5s")
-@EnabledIfEnvironmentVariable(named = "REDIS_URL", matches = "rediss?://.+")
-@EnabledIfEnvironmentVariable(named = "RABBITMQ_URL", matches = "amqps?://.+")
+@RequiresServices(rabbit = true)
 class QueuePurchaseFlowTest {
 
     private static final int TICKETS = 20;

@@ -19,11 +19,11 @@ public record VenueResponse(
         }
     }
 
-    static VenueResponse from(Venue venue, List<VenueZone> zones, long eventCount) {
+    static VenueResponse from(Venue venue, String mapUrl, List<VenueZone> zones, long eventCount) {
         return new VenueResponse(
                 venue.getId(),
                 venue.getName(),
-                venue.getMapUrl(),
+                mapUrl,
                 zones.stream().map(Zone::from).toList(),
                 zones.stream().mapToInt(VenueZone::getCapacity).sum(),
                 eventCount);

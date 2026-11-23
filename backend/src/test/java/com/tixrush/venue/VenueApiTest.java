@@ -1,5 +1,8 @@
 package com.tixrush.venue;
 
+import org.springframework.context.annotation.Import;
+import com.tixrush.TestcontainersConfiguration;
+
 import com.jayway.jsonpath.JsonPath;
 import com.tixrush.event.Event;
 import com.tixrush.event.EventRepository;
@@ -36,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Saved venues against the real Postgres: create/edit/delete (admin), read (everyone), the map picture. */
+@Import(TestcontainersConfiguration.class)
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

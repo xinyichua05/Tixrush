@@ -1,0 +1,85 @@
+# Runs on every push and pull request. Three checks:
+#   backend   - all Spring Boot tests, against throwaway Postgres/Redis/RabbitMQ containers (Testcontainers)
+#   frontend  - lint, tests and a production build of the React site
+#   docker    - builds the real image, starts the whole system with docker compose, and pokes it
+# Render deploys only after all three pass.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - name: Test
+        run: chmod +x mvnw && ./mvnw -B verify
+      - name: Keep the test reports if something failed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: backend/target/surefire-reports
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start everything
+        run: docker compose up -d --build --wait --wait-timeout 300
+      - name: Smoke test
+        run: |
+          set -e
+          curl -fsS http://localhost:8080/actuator/health | grep -q '"UP"'
+          echo "health: UP"
+          curl -fsS http://localhost:8080/ | grep -q 'id="root"'
+          echo "website: served"
+          curl -fsS http://localhost:8080/events/1 | grep -q 'id="root"'
+          echo "deep link: served by the website"
+          curl -fsS http://localhost:8080/api/events | grep -q '^\['
+          echo "api: events list answers"
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/visualizer/)
+          test "$code" = "401" || test "$code" = "403"
+          echo "visualizer: hidden ($code)"
+          code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/nope)
+          test "$code" != "200"
+          echo "unknown api path: $code (not the website)"
+      - name: Show the app log if something failed
+        if: failure()
+        run: docker compose logs app
+      - name: Stop
+        if: always()
+        run: docker compose down -v
