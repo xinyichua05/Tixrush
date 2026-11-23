@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/xinyichua05/Tixrush/actions/workflows/ci.yml/badge.svg)](https://github.com/xinyichua05/Tixrush/actions/workflows/ci.yml)
 
+**Live demo: https://tixrush-lx8q.onrender.com**: it runs on a free server, so the first visit can take about a minute to wake it up. Pay with the Stripe test card `4242 4242 4242 4242`.
+
 **A concert-ticket flash-sale system: thousands of fans, a few hundred seats, one second.**
 
 TixRush is a full-stack ticket shop built to survive the moment a big concert goes on sale. It never oversells. A double-click never creates two orders. Unpaid tickets go back on sale after 10 minutes. Payment runs through Stripe (test mode).

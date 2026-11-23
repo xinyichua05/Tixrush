@@ -1,16 +1,26 @@
 # Creates a set of sample concerts through the normal admin API, so the website looks like a real
 # ticket shop. Safe to run again: events whose name already exists are skipped.
 #
-#   powershell -ExecutionPolicy Bypass -File scripts\seed-demo-events.ps1
-#   powershell -ExecutionPolicy Bypass -File scripts\seed-demo-events.ps1 -BaseUrl https://my-deployed-api.example.com
+#   powershell -ExecutionPolicy Bypass -File scripts\seed-demo-events.ps1                (your laptop)
+#   powershell -ExecutionPolicy Bypass -File scripts\seed-demo-events.ps1 -BaseUrl https://<your-site> -AdminEmail you@example.com
+#       (online: it asks for the admin password, hidden as you type, so it isn't saved in your PowerShell history)
 #
 # The artists are made up. The venues are real places in Malaysia.
 param(
     [string]$BaseUrl = 'http://localhost:8080',
     [string]$AdminEmail = 'admin@tixrush.local',
-    [string]$AdminPassword = 'admin12345'
+    [string]$AdminPassword = ''
 )
 $ErrorActionPreference = 'Stop'
+
+if (-not $AdminPassword) {
+    if ($BaseUrl -match '^https?://localhost') {
+        $AdminPassword = 'admin12345'   # the local development admin
+    } else {
+        $secure = Read-Host "Admin password for $AdminEmail on $BaseUrl" -AsSecureString
+        $AdminPassword = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure))
+    }
+}
 
 # name, venue, show starts (Malaysia time, +08:00), sale opens, ticket types.
 # Ticket types are "name:price in RM:tickets", separated by "|". Every event has prices, so real
