@@ -1,0 +1,25 @@
+# Profile for load testing. Activate with:  --spring.profiles.active=bench
+# Values here OVERRIDE application.yml.
+#
+# Printing every SQL statement is great for learning but very slow under thousands of
+# requests: the console becomes the bottleneck and the numbers become meaningless.
+server:
+  tomcat:
+    # How many NEW connections may wait in line while all worker threads are busy.
+    # Default is 100. With 500 virtual users connecting at the same instant, the extra
+    # ones were refused by the OS ("connection refused") before reaching our code.
+    accept-count: 1000
+
+tixrush:
+  dev-tools:
+    enabled: true   # k6 compares the buy versions and reads the /api/admin stats
+  rate-limit:
+    # Off for benchmarks: k6 shares 50 accounts across thousands of attempts, so a
+    # 5-per-minute limit would block almost everything and hide the real comparison.
+    buys-per-minute: 0
+
+logging:
+  level:
+    org.hibernate.SQL: warn
+    root: warn
+    org.springframework.boot.web: info

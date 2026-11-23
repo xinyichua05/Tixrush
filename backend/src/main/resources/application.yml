@@ -1,0 +1,108 @@
+spring:
+  application:
+    name: tixrush
+  # Event picture uploads. The browser shrinks pictures first (~100-400 KB); anything over 2 MB is
+  # refused with 413 before our code even runs (GlobalExceptionHandler turns it into a friendly message).
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 3MB
+
+  # Every value is "${ENV_VAR:default}". Locally the defaults point at the portable
+  # Postgres on port 5433. In CI / production we just set the env vars instead.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/tixrush}
+    username: ${DB_USERNAME:tixrush}
+    password: ${DB_PASSWORD:tixrush}
+    # Connection pool: at most 20 open DB connections shared by all requests.
+    # Under a rush, extra requests WAIT for a free connection (up to 30s, then error).
+    hikari:
+      maximum-pool-size: 20
+
+  # Redis (Upstash). REDIS_URL is a Windows user env var, so the password never goes in git.
+  # "rediss://" (two s) = encrypted TLS connection.
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+      timeout: 2s
+
+  # RabbitMQ (CloudAMQP). RABBITMQ_URL is a Windows user env var: amqps://user:password@host/vhost
+  # "amqps" = encrypted TLS connection. Never commit or print the real URL.
+  rabbitmq:
+    addresses: ${RABBITMQ_URL:amqp://guest:guest@localhost:5672}
+    # Publisher confirms: the broker tells us "stored" for every message (see OrderPublisher).
+    publisher-confirm-type: correlated
+    # "mandatory": if no queue takes a message, give it back to us instead of dropping it silently.
+    publisher-returns: true
+    template:
+      mandatory: true
+    listener:
+      simple:
+        prefetch: 20
+        # When a message fails after all retries, don't put it back in the queue (that would loop
+        # forever); reject it so RabbitMQ moves it to the queue's dead letter queue.
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 500ms
+
+  jpa:
+    # Flyway owns the schema. Hibernate only CHECKS that entities match the tables.
+    hibernate:
+      ddl-auto: validate
+    # Don't keep the DB session open while JSON is being rendered (a common perf trap).
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+# Our own settings (read by JwtProperties / AdminProperties).
+tixrush:
+  # Developer tools: the Rush Visualizer page, the benchmark/admin rush endpoints and the
+  # ?strategy= switch (naive/pessimistic/optimistic/redis). OFF for the real site, so customers
+  # always get the safe buy path. Set DEV_TOOLS=true locally to get them back for learning.
+  dev-tools:
+    enabled: ${DEV_TOOLS:false}
+  jwt:
+    # DEV ONLY default. In production, set the JWT_SECRET env var to a long random value.
+    secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    ttl: ${JWT_TTL:1h}
+  admin:
+    email: ${ADMIN_EMAIL:admin@tixrush.local}
+    password: ${ADMIN_PASSWORD:admin12345}
+  cache:
+    # How long GET /api/events/{id} is served from Redis before re-reading Postgres.
+    event-ttl: 5s
+  rate-limit:
+    # Max purchase attempts per user per minute. 0 = rate limiting off.
+    buys-per-minute: 5
+  orders:
+    # Queued orders must be paid within this time, or the ticket goes back on sale.
+    # Try PAYMENT_HOLD=1m to watch it happen in the visualizer.
+    payment-hold: ${PAYMENT_HOLD:10m}
+  idempotency:
+    # How long the answer for an Idempotency-Key is remembered.
+    ttl: 24h
+  payments:
+    # Stripe TEST mode. Set STRIPE_SECRET_KEY (sk_test_...) as a Windows user environment variable to turn
+    # real payments on; without it every order keeps the instant test Pay button. Never commit the key.
+    stripe-secret-key: ${STRIPE_SECRET_KEY:}
+    # Only needed once the site is online and Stripe can reach /api/payments/stripe/webhook.
+    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
+    # Where Stripe sends the buyer back to after paying.
+    frontend-url: ${FRONTEND_URL:http://localhost:5173}
+    currency: myr
+
+logging:
+  level:
+    # "debug" prints every SQL statement Hibernate runs (good for learning, too noisy for a real site).
+    org.hibernate.SQL: warn
+    # Uncomment to also see the bound parameter values:
+    # org.hibernate.orm.jdbc.bind: trace
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

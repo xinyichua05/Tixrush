@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TixRush Visualizer</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23e8590c'/%3E%3Cpath d='M4 5h8v2H9v5H7V7H4z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/visualizer/app.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="logo">T</span> TixRush <span class="sub">Rush Visualizer</span></div>
+  <div class="status">
+    <span id="adminStatus" class="pill">Admin: connecting…</span>
+    <button id="pingBtn" class="pill pill-btn" title="Measure the round trip to Redis (Upstash)">Redis ping</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ CONTROL PANEL ============ -->
+  <section class="card controls">
+    <div class="step">
+      <h2><span class="num">1</span> Event</h2>
+      <div class="row">
+        <select id="eventSelect" aria-label="Event"></select>
+        <button id="refreshEventsBtn" class="ghost" title="Reload the event list">↻</button>
+      </div>
+      <div class="row">
+        <label class="inline">New event with
+          <input id="newTickets" type="number" min="1" max="5000" value="200"> tickets
+        </label>
+        <button id="createEventBtn" class="ghost">Create</button>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2><span class="num">2</span> Buy version</h2>
+      <div id="strategyCards" class="strategy-cards"></div>
+    </div>
+
+    <div class="step">
+      <h2><span class="num">3</span> Rush</h2>
+      <div class="row">
+        <label class="stack">Buyers <input id="buyers" type="number" min="1" max="20000" value="2000"></label>
+        <label class="stack">At the same time <input id="concurrency" type="number" min="1" max="200" value="100"></label>
+      </div>
+      <button id="startBtn" class="primary">Reset &amp; start rush</button>
+      <p class="hint">Resets the event (deletes its orders, refills stock), then lets the buyers loose.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW THE CHOSEN VERSION WORKS ============ -->
+  <section class="card">
+    <div class="card-head">
+      <h2>What happens on each click of "Buy"</h2>
+      <span id="pathTitle" class="tag"></span>
+    </div>
+    <div id="pathDiagram" class="path"></div>
+    <p id="pathCaption" class="caption"></p>
+  </section>
+
+  <!-- ============ LIVE VIEW ============ -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Live</h2>
+      <span id="runState" class="tag">idle</span>
+    </div>
+    <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+
+    <div id="counters" class="counters"></div>
+
+    <div class="seats-head">
+      <h3>Seats <span id="seatsLabel" class="muted"></span></h3>
+      <div class="legend">
+        <span><i class="seat"></i> free</span>
+        <span><i class="seat sold"></i> sold / paid</span>
+        <span><i class="seat pending"></i> held, waiting for payment</span>
+        <span><i class="seat phantom"></i> phantom (an order with no seat)</span>
+      </div>
+    </div>
+    <div id="seatMap" class="seat-map"></div>
+    <div id="phantomWrap" class="phantom-wrap" hidden>
+      <h3 class="bad">Oversold! Orders beyond the real seats: <span id="phantomCount">0</span></h3>
+      <div id="phantomMap" class="seat-map"></div>
+      <p id="phantomMore" class="muted"></p>
+    </div>
+  </section>
+
+  <!-- ============ HISTORY ============ -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Run history</h2>
+      <button id="clearHistoryBtn" class="ghost small">Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table class="history">
+        <thead>
+        <tr><th>#</th><th>Version</th><th>Seats</th><th>Buyers</th><th>Req/s</th><th>p95</th><th>Sold</th><th>Oversold</th></tr>
+        </thead>
+        <tbody id="historyBody"><tr><td colspan="8" class="muted">Finished rushes show up here, so you can compare the 4 versions.</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ FAN VIEW ============ -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Fan view: buy one ticket yourself</h2>
+      <span class="tag">real HTTP requests · rate limit 5/min · queued orders must be paid in time</span>
+    </div>
+    <div class="fan">
+      <div class="fan-col">
+        <label class="stack">Email <input id="fanEmail" type="email" value="fan@example.com"></label>
+        <label class="stack">Password <input id="fanPassword" type="password" value="supersecret"></label>
+        <div class="row">
+          <button id="fanRegisterBtn" class="ghost">Register</button>
+          <button id="fanLoginBtn" class="ghost">Log in</button>
+        </div>
+        <p id="fanStatus" class="muted">Not logged in.</p>
+      </div>
+
+      <div class="fan-col">
+        <div id="eventCard" class="event-card"><p class="muted">Pick an event above.</p></div>
+        <div class="row">
+          <select id="fanStrategy" aria-label="Fan buy version"></select>
+          <button id="fanBuyBtn" class="primary" disabled>Buy ticket</button>
+          <button id="fanRefreshBtn" class="ghost" title="Reload the event card">↻</button>
+        </div>
+        <div class="row">
+          <button id="fanDoubleBtn" class="ghost" disabled
+                  title="Sends 2 buy requests at the same moment with the same Idempotency-Key">Double-click test</button>
+        </div>
+        <p class="hint">The ticket count on this card comes from the Redis cache, so it can be up to 5 s old. Buying always checks the real stock.</p>
+      </div>
+
+      <div class="fan-col">
+        <h3>My orders</h3>
+        <ul id="myOrders" class="orders"><li class="muted">Log in to see your orders.</li></ul>
+        <h3>Responses</h3>
+        <ul id="fanLog" class="log"></ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">TixRush · Spring Boot 4 · PostgreSQL · Redis (Upstash) · this page is plain HTML/JS served by the backend</footer>
+
+<script src="/visualizer/app.js"></script>
+</body>
+</html>

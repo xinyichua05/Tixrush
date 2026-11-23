@@ -1,0 +1,193 @@
+### Open this file in VS Code with the "REST Client" extension (humao.rest-client)
+### and click "Send Request" above each block.
+### Run the two LOGIN requests first: the tokens are saved automatically and used below.
+
+@base = http://localhost:8080
+@adminToken = {{adminLogin.response.body.token}}
+@userToken = {{userLogin.response.body.token}}
+
+### ======================= AUTH =======================
+
+### Register a normal user -> 201 + token (run once; a second time gives 409)
+POST {{base}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "fan@example.com",
+  "password": "supersecret"
+}
+
+### LOGIN as user -> 200 + token
+# @name userLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "fan@example.com",
+  "password": "supersecret"
+}
+
+### LOGIN as the seeded admin -> 200 + token
+# @name adminLogin
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@tixrush.local",
+  "password": "admin12345"
+}
+
+### Wrong password -> 401
+POST {{base}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@tixrush.local",
+  "password": "nope-nope"
+}
+
+### ======================= EVENTS: public reads =======================
+
+### List events (no token needed)
+GET {{base}}/api/events
+
+### Get one -> 200 (or 404 if it doesn't exist)
+GET {{base}}/api/events/1
+
+### Health check
+GET {{base}}/actuator/health
+
+### ======================= EVENTS: admin only =======================
+
+### Create WITHOUT a token -> 401
+POST {{base}}/api/events
+Content-Type: application/json
+
+{
+  "name": "Rush Hour Live in KL",
+  "venue": "Bukit Jalil National Stadium",
+  "startsAt": "2027-03-20T12:00:00Z",
+  "saleStartsAt": "2027-01-10T02:00:00Z",
+  "totalTickets": 5000
+}
+
+### Create as USER -> 403
+POST {{base}}/api/events
+Authorization: Bearer {{userToken}}
+Content-Type: application/json
+
+{
+  "name": "Rush Hour Live in KL",
+  "venue": "Bukit Jalil National Stadium",
+  "startsAt": "2027-03-20T12:00:00Z",
+  "saleStartsAt": "2027-01-10T02:00:00Z",
+  "totalTickets": 5000
+}
+
+### Create as ADMIN -> 201
+POST {{base}}/api/events
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Rush Hour Live in KL",
+  "venue": "Bukit Jalil National Stadium",
+  "startsAt": "2027-03-20T12:00:00Z",
+  "saleStartsAt": "2027-01-10T02:00:00Z",
+  "totalTickets": 5000
+}
+
+### Invalid body as ADMIN -> 400 with an "errors" map
+POST {{base}}/api/events
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "venue": "Somewhere",
+  "startsAt": "2020-01-01T00:00:00Z",
+  "saleStartsAt": "2019-01-01T00:00:00Z",
+  "totalTickets": -5
+}
+
+### Update as ADMIN -> 200 (change the id to one that exists)
+PUT {{base}}/api/events/1
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "name": "Rush Hour Live in KL (Night 2)",
+  "venue": "Bukit Jalil National Stadium",
+  "startsAt": "2027-03-21T12:00:00Z",
+  "saleStartsAt": "2027-01-10T02:00:00Z"
+}
+
+### ======================= BUYING (any logged-in user) =======================
+### Change the event id to one that exists. strategy = naive | pessimistic | optimistic
+
+### Buy one ticket -> 201, or 409 when sold out
+POST {{base}}/api/events/1/purchases?strategy=pessimistic
+Authorization: Bearer {{userToken}}
+
+### Buy without a token -> 401
+POST {{base}}/api/events/1/purchases?strategy=pessimistic
+
+### Buy with the Redis counter (version 4) -> 201 / 409
+POST {{base}}/api/events/1/purchases?strategy=redis
+Authorization: Bearer {{userToken}}
+
+### Send this 6 times quickly: the 6th returns 429 + Retry-After (limit = 5 per minute)
+POST {{base}}/api/events/1/purchases?strategy=redis
+Authorization: Bearer {{userToken}}
+
+### v4 complete: Redis + RabbitMQ -> 202 Accepted {reservationId, status: QUEUED, expiresAt}
+# @name queueBuy
+POST {{base}}/api/events/1/purchases?strategy=queue
+Authorization: Bearer {{userToken}}
+Idempotency-Key: demo-click-1
+
+### Same Idempotency-Key again -> same answer, header "Idempotent-Replayed: true", no 2nd ticket
+### (change "demo-click-1" to buy another one)
+POST {{base}}/api/events/1/purchases?strategy=queue
+Authorization: Bearer {{userToken}}
+Idempotency-Key: demo-click-1
+
+### ======================= MY ORDERS (any logged-in user) =======================
+
+### My latest orders (PENDING_PAYMENT / PAID / EXPIRED / CONFIRMED)
+GET {{base}}/api/orders/mine
+Authorization: Bearer {{userToken}}
+
+### One order (404 for a moment right after buying: the worker is still creating it)
+GET {{base}}/api/orders/{{queueBuy.response.body.reservationId}}
+Authorization: Bearer {{userToken}}
+
+### Pay before the hold runs out -> 200 PAID (a 2nd time -> 409)
+POST {{base}}/api/orders/{{queueBuy.response.body.reservationId}}/pay
+Authorization: Bearer {{userToken}}
+
+### Unknown strategy -> 400
+POST {{base}}/api/events/1/purchases?strategy=magic
+Authorization: Bearer {{userToken}}
+
+### ======================= BENCHMARK ADMIN =======================
+
+### Stats: sold / left / oversold -> 200
+GET {{base}}/api/admin/events/1/stats
+Authorization: Bearer {{adminToken}}
+
+### Reset: delete this event's orders and refill stock -> 204
+POST {{base}}/api/admin/events/1/reset
+Authorization: Bearer {{adminToken}}
+
+### Round-trip time to Redis (Upstash)
+GET {{base}}/api/admin/redis/ping
+Authorization: Bearer {{adminToken}}
+
+### Optimistic retry counter (Micrometer metric)
+GET {{base}}/actuator/metrics/tixrush.purchase.optimistic.retries
+Authorization: Bearer {{adminToken}}
+
+### Delete as ADMIN -> 204
+DELETE {{base}}/api/events/1
+Authorization: Bearer {{adminToken}}

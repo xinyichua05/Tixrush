@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#07070b" />
+    <meta name="description" content="TixRush: concert tickets for Malaysia's biggest nights. Fair, fast and double-click safe." />
+    <title>TixRush · Concert tickets</title>
+    <script>
+      // Apply the saved theme BEFORE the page draws, so there's no flash of the wrong colours.
+      try {
+        document.documentElement.dataset.theme = localStorage.getItem('tixrush.theme') === 'light' ? 'light' : 'dark'
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

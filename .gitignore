@@ -1,0 +1,16 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+
+# Logs & env
+*.log
+.env
+.env.*
+
+# Node (frontend, week 6)
+node_modules/
+dist/
